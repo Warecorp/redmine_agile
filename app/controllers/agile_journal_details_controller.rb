@@ -1,8 +1,8 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2015 RedmineCRM
-# http://www.redminecrm.com/
+# Copyright (C) 2011-2021 RedmineUP
+# http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,20 +20,32 @@
 class AgileJournalDetailsController < ApplicationController
   unloadable
 
-  before_filter :find_issue
+  before_action :find_issue
 
   helper :issues
+  helper :agile_support
+  include AgileSupportHelper
 
   def done_ratio
     @done_ratios = @issue.journals.map(&:details).flatten.select {|detail| 'done_ratio' == detail.prop_key }.sort_by {|a| a.journal.created_on }
+    @done_ratios.unshift(JournalDetail.new(:property => 'attr', :prop_key => 'done_ratio', :value => history_initial_value(@done_ratios) || @issue.done_ratio,
+                                           :journal => Journal.new(:user => @issue.author, :created_on => @issue.created_on)))
   end
 
   def status
-    @statuses = @issue.journals.map(&:details).flatten.select {|detail| 'status_id' == detail.prop_key }.sort_by {|a| a.journal.created_on }
+    @statuses_collector = AgileStatusesCollector.new(@issue)
+    @group = params[:group_by] if params[:group_by].present?
+
+    respond_to do |format|
+      format.html
+      format.csv  { send_data(issue_statuses_to_csv(@statuses_collector), type: 'text/csv; header=present', filename: "issue_#{@issue.id}_statuses.csv") }
+    end
   end
 
   def assignee
     @assignees = @issue.journals.map(&:details).flatten.select {|detail| 'assigned_to_id' == detail.prop_key }.sort_by {|a| a.journal.created_on }
+    @assignees.unshift(JournalDetail.new(:property => 'attr', :prop_key => 'assigned_to_id', :value => history_initial_value(@assignees) || @issue.assigned_to_id,
+                                         :journal => Journal.new(:user => @issue.author, :created_on => @issue.created_on)))
   end
 
   def edit
@@ -50,5 +62,10 @@ class AgileJournalDetailsController < ApplicationController
     @project = @issue.project
   rescue ActiveRecord::RecordNotFound
     render_404
+  end
+
+  def history_initial_value(journals)
+    return nil unless journals.present?
+    journals.first.old_value
   end
 end

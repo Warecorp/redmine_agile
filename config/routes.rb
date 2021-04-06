@@ -1,8 +1,8 @@
 # This file is a part of Redmin Agile (redmine_agile) plugin,
 # Agile board plugin for redmine
 #
-# Copyright (C) 2011-2015 RedmineCRM
-# http://www.redminecrm.com/
+# Copyright (C) 2011-2021 RedmineUP
+# http://www.redmineup.com/
 #
 # redmine_agile is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,23 +21,16 @@
 # See: http://guides.rubyonrails.org/routing.html
 
 resources :projects do
-  resources :agile_queries, :only => [:new, :create]
-  resources :agile_versions, :only => [:index] do
-    post :index, :on => :collection
-  end
-end
-
-resources :agile_versions, :only => [:update, :show] do
-  collection do
-    get 'load'
-    get 'autocomplete'
-  end
+  resources :agile_queries, only: [:new, :create]
 end
 
 resources :issues do
   get "done_ratio", :to => "agile_journal_details#done_ratio"
   get "status", :to => "agile_journal_details#status"
   get "assignee", :to => "agile_journal_details#assignee"
+  member do
+    get "agile_data", :to => "agile_boards#agile_data"
+  end
 end
 
 resources :agile_queries
@@ -50,3 +43,5 @@ get '/projects/:project_id/agile/board', :to => 'agile_boards#index'
 get '/agile/board', :to => 'agile_boards#index'
 put '/agile/board', :to => 'agile_boards#update', :as => 'update_agile_board'
 get '/agile/issue_tooltip', :to => 'agile_boards#issue_tooltip', :as => 'issue_tooltip'
+get '/agile/inline_comment', :to => 'agile_boards#inline_comment', :as => 'agile_inline_comment'
+post 'projects/:project_id/agile/create_issue', :to => 'agile_boards#create_issue', :as => 'agile_create_issue'
